@@ -1,6 +1,6 @@
 # System Design Visualizer
 
-An interactive tool that transforms static system design diagrams into explorable, interactive visualizations using AI.
+An interactive tool that transforms static system design diagrams into explorable, interactive visualizations using AI. Now with **AI Chat Builder** - design your architecture from scratch through conversation!
 
 ## 📸 Screenshots
 
@@ -10,19 +10,32 @@ An interactive tool that transforms static system design diagrams into explorabl
 ![Interactive Graph](screenshot-2.png)
 *Interactive React Flow Graph*
 
+![Chat Builder](screenshot-3.png)
+*AI Chat Builder - Design your system through conversation*
+
 ## 🚀 Features
 
-- **AI-Powered Analysis**: Upload any system design image (architecture diagrams, flowcharts, etc.).
-- **Mermaid Generation**: Automatically converts images into editable Mermaid.js diagrams.
-- **Interactive Visualization**: Converts Mermaid diagrams into interactive React Flow graphs.
-- **Deep Dive**: Click on any component (Load Balancer, Database, etc.) to see inferred details like technology stack and role.
-- **Premium UI**: A modern, dark-themed dashboard with zoom, pan, and copy controls.
+### 📤 Image Upload Mode
+- **AI-Powered Analysis**: Upload any system design image (architecture diagrams, flowcharts, etc.)
+- **Mermaid Generation**: Automatically converts images into editable Mermaid.js diagrams
+- **Interactive Visualization**: Converts Mermaid diagrams into interactive React Flow graphs
+
+### 💬 Chat Builder Mode (NEW!)
+- **Conversational Design**: Tell the AI about your project and it asks intelligent follow-up questions
+- **Smart Questionnaire**: Covers project type, scale, features, data needs, and integrations
+- **Auto-Generation**: After 5-7 exchanges, generates a complete microservice architecture (7-15 components)
+- **No Diagram Needed**: Perfect when you don't have an existing architecture diagram
+
+### 🎨 Common Features
+- **Deep Dive**: Click on any component (Load Balancer, Database, etc.) to see inferred details like technology stack and role
+- **Premium UI**: A modern, dark/light themed dashboard with zoom, pan, and copy controls
+- **Mock Mode**: Works without API key using sample data for testing
 
 ## 🛠️ Tech Stack
 
-- **Frontend**: React, Vite, Tailwind CSS
+- **Frontend**: React 19, Vite 7, Tailwind CSS 4
 - **Visualization**: React Flow, Mermaid.js
-- **AI**: OpenAI GPT-4o (Vision & Code Generation)
+- **AI**: OpenAI GPT-4o (Vision & Conversational)
 - **Icons**: Lucide React
 
 ## 🏃‍♂️ Running Locally
@@ -30,14 +43,14 @@ An interactive tool that transforms static system design diagrams into explorabl
 ### Prerequisites
 
 - Node.js (v18 or higher)
-- An OpenAI API Key (for AI analysis features)
+- An OpenAI API Key (optional - for AI features)
 
 ### Installation
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/mallahyari/system-design-visualizer.git
-   cd system-design-visualizer
+   git clone https://github.com/Piyush-sahoo/System-Design.git
+   cd System-Design
    ```
 
 2. **Install dependencies**
@@ -66,10 +79,18 @@ An interactive tool that transforms static system design diagrams into explorabl
 
 ## 📸 Workflow
 
-1. **Upload**: Drag & drop your system design image.
-2. **Review**: See the generated Mermaid diagram code and preview. Use the toolbar to zoom or copy the code.
-3. **Convert**: Click "Convert to Interactive" to generate the node-based graph.
-4. **Explore**: Interact with the graph nodes to learn more about your system's architecture.
+### Option 1: Upload Image
+1. **Choose**: Select "Upload Image" from the landing page
+2. **Upload**: Drag & drop your system design image
+3. **Review**: See the generated Mermaid diagram code and preview
+4. **Convert**: Click "Convert to Interactive" to generate the node-based graph
+5. **Explore**: Interact with the graph nodes to learn more about your system
+
+### Option 2: Chat Builder
+1. **Choose**: Select "Build from Scratch" from the landing page
+2. **Chat**: Answer the AI's questions about your project (type, scale, features, etc.)
+3. **Generate**: After 5-7 exchanges, click "Generate System Design"
+4. **Explore**: View your auto-generated Mermaid diagram and interactive graph
 
 ## 🤝 Contributing
 
