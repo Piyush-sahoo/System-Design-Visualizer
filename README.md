@@ -15,12 +15,17 @@ An interactive tool that transforms static system design diagrams into explorabl
 
 ## 🚀 Features
 
+### 🔑 Bring Your Own Key (NEW!)
+- **OpenAI & Gemini Support**: Use your own API keys for unlimited usage.
+- **Secure Storage**: Keys are stored locally in your browser (LocalStorage) and never sent to our servers.
+- **Model Selection**: Choose between GPT-4o and Gemini 1.5 Pro/Flash for generation.
+
 ### 📤 Image Upload Mode
 - **AI-Powered Analysis**: Upload any system design image (architecture diagrams, flowcharts, etc.)
 - **Mermaid Generation**: Automatically converts images into editable Mermaid.js diagrams
 - **Interactive Visualization**: Converts Mermaid diagrams into interactive React Flow graphs
 
-### 💬 Chat Builder Mode (NEW!)
+### 💬 Chat Builder Mode
 - **Conversational Design**: Tell the AI about your project and it asks intelligent follow-up questions
 - **Smart Questionnaire**: Covers project type, scale, features, data needs, and integrations
 - **Auto-Generation**: After 5-7 exchanges, generates a complete microservice architecture (7-15 components)
@@ -35,7 +40,7 @@ An interactive tool that transforms static system design diagrams into explorabl
 
 - **Frontend**: React 19, Vite 7, Tailwind CSS 4
 - **Visualization**: React Flow, Mermaid.js
-- **AI**: OpenAI GPT-4o (Vision & Conversational)
+- **AI**: OpenAI GPT-4o, Google Gemini 1.5 Pro
 - **Icons**: Lucide React
 
 ## 🏃‍♂️ Running Locally
@@ -43,7 +48,7 @@ An interactive tool that transforms static system design diagrams into explorabl
 ### Prerequisites
 
 - Node.js (v18 or higher)
-- An OpenAI API Key (optional - for AI features)
+- An OpenAI or Gemini API Key (optional - for AI features)
 
 ### Installation
 
@@ -58,21 +63,15 @@ An interactive tool that transforms static system design diagrams into explorabl
    npm install
    ```
 
-3. **Configure Environment**
-   Create a `.env` file in the root directory:
-   ```bash
-   touch .env
-   ```
-   Add your OpenAI API key:
-   ```env
-   VITE_OPENAI_API_KEY=your_sk_key_here
-   ```
-   > **Note**: If no API key is provided, the app will run in **Mock Mode**, generating sample data for testing.
-
-4. **Start the Development Server**
+3. **Start the Development Server**
    ```bash
    npm run dev
    ```
+
+4. **Configure API Keys**
+   - Click the **Settings** (gear icon) in the top right corner.
+   - Enter your OpenAI or Gemini API key.
+   - Keys are saved locally.
 
 5. **Open in Browser**
    Navigate to `http://localhost:5173` to see the app in action.
@@ -97,5 +96,16 @@ An interactive tool that transforms static system design diagrams into explorabl
 Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## 📄 License
+
+MIT License
+
+---
+
+### ❤️ About Me
+
+**Built with love by [Piyush](https://github.com/Piyush-sahoo)**
+
+Integrating AI to make complex system design accessible to everyone.
+
 
 This project is licensed under the MIT License.

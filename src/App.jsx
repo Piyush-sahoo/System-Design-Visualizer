@@ -6,6 +6,7 @@ import {
   Image as ImageIcon,
   Layout,
   MessageSquare,
+  Settings,
   Upload,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -13,15 +14,17 @@ import { ReactFlowProvider } from "reactflow";
 import ChatBuilder from "./components/ChatBuilder";
 import InfoPanel from "./components/InfoPanel";
 import MermaidDisplay from "./components/MermaidDisplay";
+import SettingsModal from "./components/SettingsModal";
 import SystemDiagram from "./components/SystemDiagram";
 import ThemeToggle from "./components/ThemeToggle";
 import UploadZone from "./components/UploadZone";
+import { SettingsProvider, useSettings } from "./context/SettingsContext";
 import {
   convertMermaidToFlow,
   generateMermaidFromImage,
 } from "./services/analysisService";
 
-function App() {
+function AppContent() {
   // Mode: null = landing, 'upload' = image upload flow, 'chat' = chat builder flow
   const [mode, setMode] = useState(null);
   const [graphData, setGraphData] = useState(null);
@@ -31,6 +34,9 @@ function App() {
   const [isConverting, setIsConverting] = useState(false);
   const [selectedNode, setSelectedNode] = useState(null);
   const [designSummary, setDesignSummary] = useState(null);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  const { apiKey, provider } = useSettings();
 
   const interactiveSectionRef = useRef(null);
 
@@ -44,7 +50,8 @@ function App() {
     setIsAnalyzing(true);
     try {
       console.log("App: calling generateMermaidFromImage...");
-      const code = await generateMermaidFromImage(file);
+      // Pass apiKey and provider to service
+      const code = await generateMermaidFromImage(file, apiKey, provider);
       console.log("App: generateMermaidFromImage returned:", code);
       setMermaidCode(code);
     } catch (error) {
@@ -59,7 +66,8 @@ function App() {
     setIsConverting(true);
     try {
       console.log("App: calling convertMermaidToFlow...");
-      const data = await convertMermaidToFlow(mermaidCode);
+      // Pass apiKey and provider to service
+      const data = await convertMermaidToFlow(mermaidCode, apiKey, provider);
       console.log("App: convertMermaidToFlow returned:", data);
       setGraphData(data);
 
@@ -164,6 +172,29 @@ function App() {
                 Start Over
               </button>
             )}
+
+            {/* Settings Button */}
+            <button
+              onClick={() => setIsSettingsOpen(true)}
+              className="p-2 rounded-lg transition-all"
+              style={{
+                backgroundColor: "var(--interactive-bg)",
+                color: "var(--text-secondary)",
+                border: "1px solid var(--border-primary)",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = "var(--interactive-hover)";
+                e.currentTarget.style.color = "var(--text-primary)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "var(--interactive-bg)";
+                e.currentTarget.style.color = "var(--text-secondary)";
+              }}
+              title="Configure API Keys"
+            >
+              <Settings className="w-5 h-5" />
+            </button>
+
             <ThemeToggle />
           </div>
         </div>
@@ -200,6 +231,35 @@ function App() {
                 Choose how you want to create your interactive system design
                 diagram
               </p>
+
+              {/* API Key CTA - Show if no key is set */}
+              {!apiKey && (
+                <div
+                  className="mt-8 p-4 rounded-xl border flex items-center justify-between gap-4 max-w-lg mx-auto animate-in slide-in-from-bottom-4 duration-700 delay-200"
+                  style={{
+                    backgroundColor: "var(--bg-secondary)",
+                    borderColor: "var(--accent-blue)",
+                    boxShadow: "var(--accent-blue-glow)"
+                  }}
+                >
+                  <div className="flex items-center gap-3 text-left">
+                    <div className="p-2 rounded-lg bg-blue-500/10 text-blue-500">
+                      <Settings className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-sm" style={{ color: "var(--text-primary)" }}>Missing API Key</h3>
+                      <p className="text-xs" style={{ color: "var(--text-secondary)" }}>Add your OpenAI or Gemini key to get started</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setIsSettingsOpen(true)}
+                    className="whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium text-white transition-all hover:opacity-90 active:scale-95"
+                    style={{ backgroundColor: "var(--accent-blue)" }}
+                  >
+                    Add Key
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Mode Selection Cards */}
@@ -337,6 +397,8 @@ function App() {
             <ChatBuilder
               onDesignGenerated={handleDesignGenerated}
               onCancel={handleReset}
+              apiKey={apiKey}
+              provider={provider}
             />
           </div>
         )}
@@ -623,7 +685,20 @@ function App() {
           </div>
         )}
       </main>
+
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+      />
     </div>
+  );
+}
+
+function App() {
+  return (
+    <SettingsProvider>
+      <AppContent />
+    </SettingsProvider>
   );
 }
 

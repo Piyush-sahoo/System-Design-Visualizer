@@ -79,14 +79,23 @@ I'll ask you a few questions about what you're building, and then generate a cle
  * Send a message in the conversation and get AI response
  * @param {Array} conversationHistory - Array of {role, content} messages
  * @param {string} userMessage - The user's new message
+ * @param {string} apiKey - User's API Key
+ * @param {string} provider - 'openai' or 'gemini'
  * @returns {Promise<{message: string, isReadyToGenerate: boolean}>}
  */
-export const sendChatMessage = async (conversationHistory, userMessage) => {
-  const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
-
+export const sendChatMessage = async (conversationHistory, userMessage, apiKey, provider = 'openai') => {
   if (apiKey) {
-    return sendMessageWithOpenAI(conversationHistory, userMessage, apiKey);
+    if (provider === 'gemini') {
+      return sendMessageWithGemini(conversationHistory, userMessage, apiKey);
+    } else {
+      return sendMessageWithOpenAI(conversationHistory, userMessage, apiKey);
+    }
   } else {
+    // Fallback if no key provided (though UI restricts this if validation was stricter, but useful for dev)
+    const envKey = import.meta.env.VITE_OPENAI_API_KEY;
+    if (envKey) {
+      return sendMessageWithOpenAI(conversationHistory, userMessage, envKey);
+    }
     return getMockChatResponse(conversationHistory, userMessage);
   }
 };
@@ -94,14 +103,22 @@ export const sendChatMessage = async (conversationHistory, userMessage) => {
 /**
  * Generate the system design from conversation
  * @param {Array} conversationHistory - The full conversation
+ * @param {string} apiKey - User's API Key
+ * @param {string} provider - 'openai' or 'gemini'
  * @returns {Promise<{summary: string, mermaidCode: string, flowData: object}>}
  */
-export const generateDesignFromChat = async (conversationHistory) => {
-  const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
-
+export const generateDesignFromChat = async (conversationHistory, apiKey, provider = 'openai') => {
   if (apiKey) {
-    return generateWithOpenAI(conversationHistory, apiKey);
+    if (provider === 'gemini') {
+      return generateWithGemini(conversationHistory, apiKey);
+    } else {
+      return generateWithOpenAI(conversationHistory, apiKey);
+    }
   } else {
+    const envKey = import.meta.env.VITE_OPENAI_API_KEY;
+    if (envKey) {
+      return generateWithOpenAI(conversationHistory, envKey);
+    }
     return getMockDesign();
   }
 };
@@ -131,7 +148,7 @@ const sendMessageWithOpenAI = async (conversationHistory, userMessage, apiKey) =
     });
 
     const data = await response.json();
-    
+
     if (data.error) {
       throw new Error(data.error.message);
     }
@@ -170,7 +187,7 @@ const generateWithOpenAI = async (conversationHistory, apiKey) => {
     });
 
     const data = await response.json();
-    
+
     if (data.error) {
       throw new Error(data.error.message);
     }
@@ -183,10 +200,109 @@ const generateWithOpenAI = async (conversationHistory, apiKey) => {
   }
 };
 
+// ============ Gemini Implementation ============
+
+const sendMessageWithGemini = async (conversationHistory, userMessage, apiKey) => {
+  try {
+    // Map roles: 'user' -> 'user', 'assistant' -> 'model'
+    const history = conversationHistory.map(msg => ({
+      role: msg.role === 'user' ? 'user' : 'model',
+      parts: [{ text: msg.content }]
+    }));
+
+    const systemInstruction = {
+      role: 'user',
+      parts: [{ text: `SYSTEM INSTRUCTION: ${SYSTEM_PROMPT}` }]
+    };
+
+    // Note: Gemini API structure is slightly different for multi-turn chat via REST
+    // But we can use the generateContent endpoint with full history
+    const contents = [
+      systemInstruction, // Inject system prompt as first user message or use system_instruction in beta
+      ...history
+    ];
+
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        contents: contents,
+        generationConfig: {
+          maxOutputTokens: 500,
+          temperature: 0.7
+        }
+      })
+    });
+
+    const data = await response.json();
+
+    if (data.error) {
+      throw new Error(data.error.message);
+    }
+
+    const aiMessage = data.candidates[0].content.parts[0].text;
+    const isReadyToGenerate = checkIfReadyToGenerate(aiMessage, conversationHistory.length);
+
+    return { message: aiMessage, isReadyToGenerate };
+
+  } catch (error) {
+    console.error('Gemini Chat API Error:', error);
+    throw error;
+  }
+};
+
+const generateWithGemini = async (conversationHistory, apiKey) => {
+  try {
+    const conversationSummary = conversationHistory
+      .map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${m.content}`)
+      .join('\n\n');
+
+    const prompt = `${GENERATION_PROMPT}\n\nHere's the conversation about what to build:\n\n${conversationSummary}\n\nGenerate the system design. Return ONLY raw JSON.`;
+
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${apiKey}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        contents: [{
+          role: 'user',
+          parts: [{ text: prompt }]
+        }],
+        generationConfig: {
+          maxOutputTokens: 8192,
+          responseMimeType: "application/json"
+        }
+      })
+    });
+
+    const data = await response.json();
+
+    if (data.error) {
+      throw new Error(data.error.message);
+    }
+
+    const text = data.candidates[0].content.parts[0].text;
+
+    // More robust JSON extraction
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    const jsonStr = jsonMatch ? jsonMatch[0] : text;
+
+    return JSON.parse(jsonStr);
+
+  } catch (error) {
+    console.error('Gemini Generation API Error:', error);
+    throw error;
+  }
+};
+
+
 const checkIfReadyToGenerate = (message, historyLength) => {
   const lowerMessage = message.toLowerCase();
   const readyKeywords = ['generate', 'create the design', 'ready to build', 'shall i generate', 'want me to generate', 'create your architecture'];
-  
+
   return historyLength >= 8 || readyKeywords.some(keyword => lowerMessage.includes(keyword));
 };
 
@@ -203,10 +319,10 @@ const mockResponses = [
 
 const getMockChatResponse = async (conversationHistory, userMessage) => {
   await new Promise(resolve => setTimeout(resolve, 800 + Math.random() * 700));
-  
+
   const exchangeCount = Math.floor(conversationHistory.length / 2);
   const mockResponse = mockResponses[Math.min(exchangeCount, mockResponses.length - 1)];
-  
+
   return {
     message: mockResponse.response,
     isReadyToGenerate: exchangeCount >= 5
@@ -215,7 +331,7 @@ const getMockChatResponse = async (conversationHistory, userMessage) => {
 
 const getMockDesign = async () => {
   await new Promise(resolve => setTimeout(resolve, 1500));
-  
+
   return {
     summary: "A scalable microservice architecture with load balancing, API gateway, multiple backend services, caching, and database layers.",
     mermaidCode: `graph TD

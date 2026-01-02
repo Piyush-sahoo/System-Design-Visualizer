@@ -1,17 +1,27 @@
 import { MarkerType } from 'reactflow';
 
 /**
- * Analyzes an image using OpenAI's GPT-4o to generate a Mermaid diagram.
+ * Analyzes an image using OpenAI's GPT-4o or Gemini to generate a Mermaid diagram.
  * @param {File} imageFile 
+ * @param {string} apiKey
+ * @param {string} provider
  * @returns {Promise<string>} Mermaid diagram string
  */
-export const generateMermaidFromImage = async (imageFile) => {
-    const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
-
+export const generateMermaidFromImage = async (imageFile, apiKey, provider = 'openai') => {
     if (apiKey) {
-        console.log("analysisService: Using OpenAI API for Mermaid generation");
-        return generateMermaidWithOpenAI(imageFile, apiKey);
+        console.log(`analysisService: Using ${provider} API for Mermaid generation`);
+        if (provider === 'gemini') {
+            return generateMermaidWithGemini(imageFile, apiKey);
+        } else {
+            return generateMermaidWithOpenAI(imageFile, apiKey);
+        }
     } else {
+        // Fallback for dev environment or mock
+        const envKey = import.meta.env.VITE_OPENAI_API_KEY;
+        if (envKey) {
+            return generateMermaidWithOpenAI(imageFile, envKey);
+        }
+
         console.log("analysisService: No API key found, using mock data");
         return new Promise((resolve) => {
             setTimeout(() => {
@@ -24,15 +34,24 @@ export const generateMermaidFromImage = async (imageFile) => {
 /**
  * Converts a Mermaid diagram string to React Flow nodes and edges.
  * @param {string} mermaidCode 
+ * @param {string} apiKey
+ * @param {string} provider
  * @returns {Promise<{nodes: Array, edges: Array}>}
  */
-export const convertMermaidToFlow = async (mermaidCode) => {
-    const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
-
+export const convertMermaidToFlow = async (mermaidCode, apiKey, provider = 'openai') => {
     if (apiKey) {
-        console.log("analysisService: Using OpenAI API for Flow conversion");
-        return convertToFlowWithOpenAI(mermaidCode, apiKey);
+        console.log(`analysisService: Using ${provider} API for Flow conversion`);
+        if (provider === 'gemini') {
+            return convertToFlowWithGemini(mermaidCode, apiKey);
+        } else {
+            return convertToFlowWithOpenAI(mermaidCode, apiKey);
+        }
     } else {
+        const envKey = import.meta.env.VITE_OPENAI_API_KEY;
+        if (envKey) {
+            return convertToFlowWithOpenAI(mermaidCode, envKey);
+        }
+
         console.log("analysisService: No API key found, using mock data");
         return new Promise((resolve) => {
             setTimeout(() => {
@@ -91,8 +110,52 @@ const generateMermaidWithOpenAI = async (file, apiKey) => {
 
     } catch (error) {
         console.error("OpenAI API Error:", error);
-        alert("Failed to analyze image with AI. Falling back to mock data.");
-        return getMockMermaid();
+        alert("Failed to analyze image with AI. Check console for details.");
+        throw error;
+    }
+};
+
+const generateMermaidWithGemini = async (file, apiKey) => {
+    try {
+        const base64Data = await fileToGenerativePart(file);
+
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${apiKey}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                contents: [{
+                    parts: [
+                        {
+                            text: `You are a system architecture expert. Analyze the provided system design diagram image and convert it into a Mermaid JS diagram.
+            
+            Return ONLY the Mermaid code string. Do not include markdown code blocks (like \`\`\`mermaid).
+            
+            Rules:
+            1. Use 'graph TD' or 'graph LR' based on the layout.
+            2. Use appropriate shapes for components (cylinder for databases, rect for servers, etc).
+            3. Ensure directionality of arrows matches the image.` },
+                        base64Data
+                    ]
+                }]
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.error) {
+            throw new Error(data.error.message);
+        }
+
+        let content = data.candidates[0].content.parts[0].text;
+        content = content.replace(/^```mermaid\n/, '').replace(/^```\n/, '').replace(/```$/, '');
+        return content.trim();
+
+    } catch (error) {
+        console.error("Gemini API Error:", error);
+        alert("Failed to analyze image with Gemini. Check console for details.");
+        throw error;
     }
 };
 
@@ -156,8 +219,74 @@ const convertToFlowWithOpenAI = async (mermaidCode, apiKey) => {
 
     } catch (error) {
         console.error("OpenAI API Error:", error);
-        alert("Failed to convert Mermaid to Flow. Falling back to mock data.");
-        return getMockGraph();
+        alert("Failed to convert Mermaid to Flow. Check console for details.");
+        throw error;
+    }
+};
+
+const convertToFlowWithGemini = async (mermaidCode, apiKey) => {
+    try {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${apiKey}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                contents: [{
+                    parts: [
+                        {
+                            text: `You are a system architecture expert. Convert the provided Mermaid diagram code into a structured graph format for React Flow.
+            
+            Return ONLY a valid JSON object (no markdown formatting) with this structure:
+            {
+              "nodes": [
+                { 
+                  "id": "string", 
+                  "type": "one of: clientNode, serverNode, databaseNode, loadBalancerNode, cacheNode", 
+                  "position": { "x": number, "y": number }, 
+                  "data": { 
+                    "label": "string", 
+                    "description": "brief description of role inferred from context", 
+                    "tech": "inferred technologies" 
+                  } 
+                }
+              ],
+              "edges": [
+                { "id": "string", "source": "nodeId", "target": "nodeId", "animated": true, "label": "optional connection label" }
+              ]
+            }
+            
+            Rules:
+            1. Map Mermaid shapes/names to the most appropriate node type.
+            2. Space out the position coordinates (x, y) so the graph is readable.
+            3. Ensure all source and target IDs in edges exist in the nodes array.
+
+            Mermaid Code:
+            ${mermaidCode}`
+                        }
+                    ]
+                }],
+                generationConfig: {
+                    maxOutputTokens: 4000,
+                    responseMimeType: "application/json"
+                }
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.error) {
+            throw new Error(data.error.message);
+        }
+
+        const text = data.candidates[0].content.parts[0].text;
+        const jsonStr = text.replace(/^```json\n/, '').replace(/^```\n/, '').replace(/```$/, '');
+        return JSON.parse(jsonStr);
+
+    } catch (error) {
+        console.error("Gemini API Error:", error);
+        alert("Failed to convert Mermaid to Flow. Check console for details.");
+        throw error;
     }
 };
 
@@ -167,6 +296,22 @@ const toBase64 = (file) => new Promise((resolve, reject) => {
     reader.onload = () => resolve(reader.result);
     reader.onerror = error => reject(error);
 });
+
+// Helper for Gemini file handling (converts to base64 minus the data URL prefix)
+const fileToGenerativePart = async (file) => {
+    const base64EncodedDataPromise = new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result.split(',')[1]);
+        reader.readAsDataURL(file);
+    });
+
+    return {
+        inline_data: {
+            data: await base64EncodedDataPromise,
+            mime_type: file.type,
+        },
+    };
+};
 
 const getMockMermaid = () => {
     return `graph TD

@@ -6,7 +6,7 @@ import {
     sendChatMessage,
 } from "../services/conversationService";
 
-const ChatBuilder = ({ onDesignGenerated, onCancel }) => {
+const ChatBuilder = ({ onDesignGenerated, onCancel, apiKey, provider }) => {
     const [messages, setMessages] = useState([]);
     const [inputValue, setInputValue] = useState("");
     const [isLoading, setIsLoading] = useState(false);
@@ -45,7 +45,7 @@ const ChatBuilder = ({ onDesignGenerated, onCancel }) => {
         setMessages(newMessages);
 
         try {
-            const response = await sendChatMessage(newMessages, userMessage);
+            const response = await sendChatMessage(newMessages, userMessage, apiKey, provider);
             setMessages([
                 ...newMessages,
                 { role: "assistant", content: response.message },
@@ -76,7 +76,7 @@ const ChatBuilder = ({ onDesignGenerated, onCancel }) => {
     const handleGenerate = async () => {
         setIsGenerating(true);
         try {
-            const design = await generateDesignFromChat(messages);
+            const design = await generateDesignFromChat(messages, apiKey, provider);
             onDesignGenerated(design);
         } catch (error) {
             console.error("Generation error:", error);
